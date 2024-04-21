@@ -81,7 +81,8 @@ public sealed class OpenAiService : IOpenAiService
         HttpResponseMessage response = await client.SendAsync(request, cancellationToken);
         // if (!response.IsSuccessStatusCode)
         // {
-            Console.WriteLine(await response.Content.ReadAsStringAsync(cancellationToken));
+        string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+        Console.WriteLine(responseContent);
         // }
         response.EnsureSuccessStatusCode();
         

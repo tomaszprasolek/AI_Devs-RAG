@@ -14,6 +14,27 @@ public class GptMessage(
     [JsonPropertyName("content")] 
     public string Content { get; } = content;
 
-    // [JsonPropertyName("tool_calls")]
-    // public List<ToolCall> tool_calls { get; set; }
+    [JsonPropertyName("tool_calls")]
+    public List<ToolCall> tool_calls { get; set; }
+}
+
+public sealed class ToolCall
+{
+    [JsonPropertyName("id")]
+    public string id { get; set; }
+
+    [JsonPropertyName("type")]
+    public string type { get; set; }
+
+    [JsonPropertyName("function")]
+    public Function function { get; set; }
+}
+
+public sealed class Function
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; }
+    
+    [JsonPropertyName("arguments")]
+    public string arguments { get; set; }
 }

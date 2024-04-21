@@ -3,6 +3,9 @@ using AiDevsRag.OpenAI;
 using AiDevsRag.OpenAI.Request;
 using AiDevsRag.OpenAI.Response;
 using AiDevsRag.Qdrant;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace AiDevsRag;
 
@@ -53,12 +56,14 @@ public sealed class ApplicationLogic(
             });
 
             foreach (Document document in documents)
-                await GenerateTagsAsync(document, new EnrichMetadata(document.Metadata.Title, document.Metadata.Header),
+            {
+                document.Metadata.Tags = await GenerateTagsAsync(document, new EnrichMetadata(document.Metadata.Title, document.Metadata.Header),
                     cancellationToken);
+            }
         }
     }
 
-    private async Task GenerateTagsAsync(Document document,
+    private async Task<string[]> GenerateTagsAsync(Document document,
         EnrichMetadata config,
         CancellationToken cancellationToken)
     {
@@ -80,5 +85,33 @@ public sealed class ApplicationLogic(
         prompt.AddMessage(new GptMessage(GptMessageRole.user, document.PageContent));
 
         GptResponse? gptResponse = await openAiService.ChatWithFunctionAsync(prompt, functionJson, cancellationToken);
+
+        return ParseFunctionCall(gptResponse);
+    }
+
+    private static string[] ParseFunctionCall(GptResponse response)
+    {
+        if (response.Choices[0].Message.tool_calls[0].function is null)
+            return [];
+        
+        string json = response.Choices[0].Message.tool_calls[0].function!.arguments;
+
+        // Deserialize the JSON string into an instance of TagsContainer
+        TagsContainer? container = JsonSerializer.Deserialize<TagsContainer>(json);
+        if (container is null)
+            return [];
+        
+        string[] tags = container.Tags
+            .Select(x => Regex.Replace(x.ToLower(),"[-\\s]+", "_"))
+            .ToArray();
+        return tags;
+    }
+    
+                
+    // Define a class that matches the JSON structure
+    private sealed class TagsContainer
+    {
+        [JsonPropertyName("tags")]
+        public string[] Tags { get; set; }
     }
 }
