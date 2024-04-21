@@ -9,7 +9,7 @@ public sealed class Message
         Content = content;
     }
 
-    string Role { get; set; }
-    string Content { get; set; }
-    string? Name { get; set; }
+    public string Role { get; set; }
+    public string Content { get; set; }
+    public string? Name { get; set; }
 }

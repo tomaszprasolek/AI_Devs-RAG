@@ -21,4 +21,17 @@
         <PackageReference Include="TiktokenSharp" Version="1.1.0"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Memories\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="Memories\C01L01-wprowadzenie-1712065276.md">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Memories\c01l01-wprowadzenie-do-generative-ai.md">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>

@@ -6,7 +6,7 @@ namespace AiDevsRag.Helpers;
 
 public class DocumentsHelpers
 {
-    public List<Document> Split(string text, ISplitMetadata config)
+    public static List<Document> Split(string text, ISplitMetadata config)
     {
         List<Document> documents = new List<Document>();
         string document = "";
@@ -89,8 +89,8 @@ public class DocumentsHelpers
 
         return documents;
     }
-    
-    public int CountTokens(List<Message> messages, string model = "gpt-3.5-turbo-0613")
+
+    private static int CountTokens(List<Message> messages, string model = "gpt-3.5-turbo-0613")
     {
         TikToken encoding = TikToken.GetEncoding("cl100k_base");
 
@@ -134,9 +134,12 @@ public class DocumentsHelpers
             //     }
             // }
 
-            foreach (PropertyInfo property in typeof(Message).GetProperties())
+            foreach (PropertyInfo property in message.GetType().GetProperties())
             {
-                string value = property.GetValue(message)!.ToString()!;
+                string? value = property.GetValue(message)?.ToString();
+                if (value is null)
+                    continue;
+                
                 numTokens += encoding.Encode(value).Count;
                 if (property.Name == "Name")
                 {
