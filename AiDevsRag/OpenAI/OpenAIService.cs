@@ -21,7 +21,7 @@ public interface IOpenAiService
 
 public sealed class OpenAiService : IOpenAiService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    public static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         WriteIndented = true,

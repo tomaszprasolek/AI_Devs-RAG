@@ -34,12 +34,13 @@ public sealed class ApplicationLogic(
         {
             // Load document to vector database
             Console.WriteLine("Start loading memories to Qdrant database...");
-            await LoadMemoriesAsync(cancellationToken);
+            List<Document> memories = await LoadMemoriesAsync(cancellationToken);
         }
     }
 
-    private async Task LoadMemoriesAsync(CancellationToken cancellationToken)
+    private async Task<List<Document>> LoadMemoriesAsync(CancellationToken cancellationToken)
     {
+        List<Document> memories = new List<Document>(100);
         string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "Memories");
 
         foreach (string filePath in Directory.EnumerateFiles(directoryPath, "*.md"))
@@ -60,7 +61,15 @@ public sealed class ApplicationLogic(
                 document.Metadata.Tags = await GenerateTagsAsync(document, new EnrichMetadata(document.Metadata.Title, document.Metadata.Header),
                     cancellationToken);
             }
+            
+            memories.AddRange(documents);
         }
+
+        // Write memories and documents to file
+        string memoriesFilePath = Path.Combine(Directory.GetCurrentDirectory(), "Memories", "memories.json");
+        await File.WriteAllTextAsync(memoriesFilePath, JsonSerializer.Serialize(memories, OpenAiService.JsonOptions), cancellationToken);
+        
+        return memories;
     }
 
     private async Task<string[]> GenerateTagsAsync(Document document,
@@ -91,10 +100,16 @@ public sealed class ApplicationLogic(
 
     private static string[] ParseFunctionCall(GptResponse response)
     {
-        if (response.Choices[0].Message.tool_calls[0].function is null)
-            return [];
+        string json;
         
-        string json = response.Choices[0].Message.tool_calls[0].function!.arguments;
+        if (response.Choices[0].Message.tool_calls is null)
+        {
+            json = response.Choices[0].Message.Content;
+        }
+        else
+        {
+            json = response.Choices[0].Message.tool_calls[0].function!.arguments;
+        }
 
         // Deserialize the JSON string into an instance of TagsContainer
         TagsContainer? container = JsonSerializer.Deserialize<TagsContainer>(json);

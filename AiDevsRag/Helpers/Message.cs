@@ -12,12 +12,17 @@ public sealed class Message
         Content = content;
     }
 
+    [JsonPropertyName("role")]
     public string Role { get; set; }
+    
+    [JsonPropertyName("content")]
     public string Content { get; set; }
+    
+    [JsonPropertyName("name")]
     public string? Name { get; set; }
     
     [JsonPropertyName("tool_calls")]
-    public List<ToolCall> tool_calls { get; set; }
+    public List<ToolCall>? tool_calls { get; set; }
 }
 
 public sealed class ToolCall
