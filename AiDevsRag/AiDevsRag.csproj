@@ -23,6 +23,7 @@
 
     <ItemGroup>
       <Folder Include="Memories\" />
+      <Folder Include="OpenAI\Common\" />
     </ItemGroup>
 
     <ItemGroup>
@@ -30,6 +31,9 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
       <None Update="Memories\c01l01-wprowadzenie-do-generative-ai.md">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="OpenAI\FunctionCalling\generate_tags.json">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>
