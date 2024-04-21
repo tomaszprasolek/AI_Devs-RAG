@@ -2,7 +2,7 @@
 
 public enum GptMessageRole
 {
-    System,
-    User,
-    Assistant
+    system,
+    user,
+    assistant
 }

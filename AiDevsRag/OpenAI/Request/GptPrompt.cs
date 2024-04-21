@@ -22,12 +22,12 @@ public sealed class GptPrompt
 
     [JsonPropertyName("tool_choice")] 
     public string? ToolChoice { get; set; }
-    
-    [JsonPropertyName("temperature")]
-    public float Temperature { get; set; }
+
+    [JsonPropertyName("temperature")] 
+    public float Temperature { get; set; } = 1;
     
     [JsonPropertyName("maxConcurrency")]
-    public int MaxConcurrency { get; set; }
+    public int? MaxConcurrency { get; set; }
 
     public void AddMessage(GptMessage message)
     {

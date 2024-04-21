@@ -63,22 +63,22 @@ public sealed class ApplicationLogic(
         CancellationToken cancellationToken)
     {
         string functionJson =
-            File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "OpenAI", "FunctionCalling",
-                "generate_tags.json"));
+            await File.ReadAllTextAsync(Path.Combine(Directory.GetCurrentDirectory(), "OpenAI", "FunctionCalling",
+                "generate_tags.json"), cancellationToken);
 
         var prompt = new GptPrompt("gpt-4-0613")
         {
-            Temperature = 0,
-            MaxConcurrency = 5
+            Temperature = 0
+            //MaxConcurrency = 5
         };
 
         string systemPrompt = "Generate tags for the following document.\n\r" +
                               "Additional info: \n\r" +
                               $"- Document title: {config.Title}\n\r" +
                               $"- Document context (may be helpful): {config.Header ?? "n/a"}\n\r";
-        prompt.AddMessage(new GptMessage(GptMessageRole.System, systemPrompt));
-        prompt.AddMessage(new GptMessage(GptMessageRole.User, document.PageContent));
+        prompt.AddMessage(new GptMessage(GptMessageRole.system, systemPrompt));
+        prompt.AddMessage(new GptMessage(GptMessageRole.user, document.PageContent));
 
-        GptResponse gptResponse = await openAiService.ChatWithFunctionAsync(prompt, functionJson, cancellationToken);
+        GptResponse? gptResponse = await openAiService.ChatWithFunctionAsync(prompt, functionJson, cancellationToken);
     }
 }

@@ -1,7 +1,10 @@
-﻿namespace AiDevsRag.Helpers;
+﻿using System.Text.Json.Serialization;
+
+namespace AiDevsRag.Helpers;
 
 public sealed class Message
 {
+    [JsonConstructor]
     public Message(string role,
         string content)
     {
