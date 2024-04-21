@@ -4,7 +4,14 @@ using System.Text.Json;
 
 namespace AiDevsRag.Qdrant;
 
-public sealed class QdrantService
+public interface IQdrantService
+{
+    Task CreateCollectionAsync(string collectionName);
+    Task<bool> CheckIfCollectionExistsAsync(string collectionName);
+    Task<QdrantCollectionResponse?> GetCollectionInfoAsync(string collectionName);
+}
+
+public sealed class QdrantService : IQdrantService
 {
     private readonly string _qdrantUrl = "http://localhost:6333/collections";
     
