@@ -7,6 +7,7 @@ public class GptMessage(
     GptMessageRole role,
     string content)
 {
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     [JsonPropertyName("role")] 
     public GptMessageRole Role { get; } = role;
 

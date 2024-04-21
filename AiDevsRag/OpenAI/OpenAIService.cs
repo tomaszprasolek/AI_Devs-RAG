@@ -51,7 +51,10 @@ public sealed class OpenAiService
         // Cast the JsonNode to a JsonObject
         JsonObject jsonObject = (JsonObject)jsonNode!;
         
-        jsonNode.AsObject().Add("tools", );
+        jsonObject.Add("tools", JsonNode.Parse(functionJson));
+        jsonObject.Add("tool_choice", "auto");
+
+        json = jsonObject.ToJsonString(JsonOptions);
         
         //Console.WriteLine(json);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
