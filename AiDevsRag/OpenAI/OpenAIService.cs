@@ -1,4 +1,5 @@
-﻿using AiDevsRag.OpenAI.Request;
+﻿using AiDevsRag.OpenAI.Embeddings;
+using AiDevsRag.OpenAI.Request;
 using AiDevsRag.OpenAI.Response;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
@@ -16,6 +17,9 @@ public interface IOpenAiService
 
     Task<GptResponse?> ChatWithFunctionAsync(GptPrompt prompt,
         string functionJson,
+        CancellationToken cancellationToken);
+
+    Task<Embedding?> GenerateEmbeddings(EmbeddingRequest embeddingRequest,
         CancellationToken cancellationToken);
 }
 
@@ -88,5 +92,27 @@ public sealed class OpenAiService : IOpenAiService
         
         return await response.Content
             .ReadFromJsonAsync<GptResponse>(JsonOptions, cancellationToken);
+    }
+
+    public async Task<Embedding?> GenerateEmbeddings(EmbeddingRequest embeddingRequest, 
+        CancellationToken cancellationToken)
+    {
+        using HttpClient client = new();
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/embeddings");
+        request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+
+        string json = JsonSerializer.Serialize(embeddingRequest, JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        request.Content = content;
+    
+        var response = await client.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            Console.WriteLine(responseContent);
+        }
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<Embedding>(cancellationToken: cancellationToken);
     }
 }

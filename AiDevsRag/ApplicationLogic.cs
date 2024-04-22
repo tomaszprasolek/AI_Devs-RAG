@@ -1,8 +1,10 @@
 ﻿using AiDevsRag.Helpers;
 using AiDevsRag.OpenAI;
+using AiDevsRag.OpenAI.Embeddings;
 using AiDevsRag.OpenAI.Request;
 using AiDevsRag.OpenAI.Response;
 using AiDevsRag.Qdrant;
+using AiDevsRag.Qdrant.Embeddings;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -32,9 +34,41 @@ public sealed class ApplicationLogic(
         QdrantCollectionResponse? collection = await qdrantDatabase.GetCollectionInfoAsync(collectionName);
         if (collection is null || collection.Result.PointsCount == 0)
         {
-            // Load document to vector database
+            // Generate documents to be ready to load them to Qdrant
             Console.WriteLine("Start loading memories to Qdrant database...");
             List<Document> memories = await LoadMemoriesAsync(cancellationToken);
+            
+            // Load document to vector database
+            foreach (Document document in memories)
+            {
+                var embeddings =
+                    await openAiService.GenerateEmbeddings(new EmbeddingRequest(document.PageContent), cancellationToken);
+
+                if (embeddings is null)
+                {
+                    continue;
+                }
+
+                QdrantPoints points = new QdrantPoints
+                {
+                    Points =
+                    [
+                        new Point
+                        {
+                            Id = document.Metadata.Id,
+                            Payload = new Payload
+                            {
+                                Text = JsonSerializer.Serialize(document.Metadata)
+                            },
+                            Vector = embeddings!.Data[0].Embedding
+                        }
+                    ]
+                };
+                    
+                // Insert to vector database
+                await qdrantDatabase.UpsertPointsAsync(collectionName, points, cancellationToken);
+            }
+            
         }
     }
 

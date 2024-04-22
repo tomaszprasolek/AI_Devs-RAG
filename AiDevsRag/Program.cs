@@ -27,7 +27,7 @@ await app!.LoadMemoryAsync(cancellationTokenSource.Token);
 
 
 
-public sealed class OpenAiConfig
+public sealed class OpenAiConfig // TODO: move to separate file
 {
     public const string ConfigKey = "OpenAi";
     public string ApiKey { get; set; }
