@@ -1,6 +1,7 @@
 ﻿using AiDevsRag;
 using AiDevsRag.OpenAI;
 using AiDevsRag.Qdrant;
+using AiDevsRag.Qdrant.Search;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,13 +19,18 @@ services.AddSingleton<ApplicationLogic>();
 
 var serviceProvider = services.BuildServiceProvider();
 
+string question = "What is AI?";
+Console.WriteLine($"Question: {question}");
+
 Console.WriteLine("Starting the app...");
 
 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
 var app = serviceProvider.GetRequiredService<ApplicationLogic>();
-await app!.LoadMemoryAsync(cancellationTokenSource.Token);
 
+await app.LoadMemoryAsync(cancellationTokenSource.Token);
+QdrantSearchResponse searchResult = await app.SearchAsync(question, "ai_devs", cancellationTokenSource.Token);
+await app.AskLlmAsync(question, searchResult.Result, cancellationTokenSource.Token);
 
 
 public sealed class OpenAiConfig // TODO: move to separate file

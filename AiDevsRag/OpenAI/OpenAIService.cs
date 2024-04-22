@@ -19,7 +19,7 @@ public interface IOpenAiService
         string functionJson,
         CancellationToken cancellationToken);
 
-    Task<Embedding?> GenerateEmbeddings(EmbeddingRequest embeddingRequest,
+    Task<Embedding?> GenerateEmbeddingsAsync(EmbeddingRequest embeddingRequest,
         CancellationToken cancellationToken);
 }
 
@@ -94,7 +94,7 @@ public sealed class OpenAiService : IOpenAiService
             .ReadFromJsonAsync<GptResponse>(JsonOptions, cancellationToken);
     }
 
-    public async Task<Embedding?> GenerateEmbeddings(EmbeddingRequest embeddingRequest, 
+    public async Task<Embedding?> GenerateEmbeddingsAsync(EmbeddingRequest embeddingRequest, 
         CancellationToken cancellationToken)
     {
         using HttpClient client = new();

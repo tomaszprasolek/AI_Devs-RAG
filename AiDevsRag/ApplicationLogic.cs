@@ -1,13 +1,16 @@
 ﻿using AiDevsRag.Helpers;
 using AiDevsRag.OpenAI;
+using AiDevsRag.OpenAI.Common;
 using AiDevsRag.OpenAI.Embeddings;
 using AiDevsRag.OpenAI.Request;
 using AiDevsRag.OpenAI.Response;
 using AiDevsRag.Qdrant;
 using AiDevsRag.Qdrant.Embeddings;
+using AiDevsRag.Qdrant.Search;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Result = AiDevsRag.Qdrant.Search.Result;
 
 namespace AiDevsRag;
 
@@ -15,7 +18,7 @@ public sealed class ApplicationLogic(
     IQdrantService qdrantDatabase,
     IOpenAiService openAiService)
 {
-    public async Task LoadMemoryAsync(CancellationToken cancellationToken) // TODO: move it to separete class
+    public async Task LoadMemoryAsync(CancellationToken cancellationToken)
     {
         string collectionName = "ai_devs";
 
@@ -42,7 +45,7 @@ public sealed class ApplicationLogic(
             foreach (Document document in memories)
             {
                 var embeddings =
-                    await openAiService.GenerateEmbeddings(new EmbeddingRequest(document.PageContent), cancellationToken);
+                    await openAiService.GenerateEmbeddingsAsync(new EmbeddingRequest(document.PageContent), cancellationToken);
 
                 if (embeddings is null)
                 {
@@ -56,11 +59,11 @@ public sealed class ApplicationLogic(
                         new Point
                         {
                             Id = document.Metadata.Id,
-                            Payload = new Payload
+                            Payload = new Qdrant.Embeddings.Payload
                             {
                                 Text = JsonSerializer.Serialize(document.Metadata)
                             },
-                            Vector = embeddings!.Data[0].Embedding
+                            Vector = embeddings.Data[0].Embedding
                         }
                     ]
                 };
@@ -70,6 +73,47 @@ public sealed class ApplicationLogic(
             }
             
         }
+    }
+
+    public async Task<QdrantSearchResponse> SearchAsync(string query, string collectionName, CancellationToken cancellationToken)
+    {
+        Embedding? queryEmbedding = await openAiService.GenerateEmbeddingsAsync(new EmbeddingRequest(query), cancellationToken);
+        if (queryEmbedding is null)
+        {
+            throw new Exception("Embedding is null");
+        }
+        
+        QdrantSearchResponse? result = await qdrantDatabase.SearchAsync(collectionName, new QdrantSearchRequest
+        {
+            Vector = queryEmbedding.Data[0].Embedding
+        }, cancellationToken);
+
+        if (result is null)
+        {
+            throw new Exception("Qdrant search result is null");
+        }
+        //
+        // Console.WriteLine("Search result:");
+        // Console.WriteLine(result);
+
+        return result;
+    }
+
+    public async Task AskLlmAsync(string question, 
+        List<Result> qdrantSearchResults, 
+        CancellationToken cancellationToken)
+    {
+        var gptPrompt = new GptPrompt
+        {
+            Temperature = 0.5f
+        };
+        gptPrompt.AddMessage(new GptMessage(GptMessageRole.system, Prompts.GetSystemPrompt(qdrantSearchResults)));
+        gptPrompt.AddMessage(new GptMessage(GptMessageRole.user, question));
+        
+        GptResponse response = await openAiService.ChatAsync(gptPrompt, cancellationToken);
+        
+        Console.WriteLine("Answer:");
+        Console.WriteLine(response.Choices[0].Message.Content);
     }
 
     private async Task<List<Document>> LoadMemoriesAsync(CancellationToken cancellationToken)
@@ -94,9 +138,11 @@ public sealed class ApplicationLogic(
             {
                 document.Metadata.Tags = await GenerateTagsAsync(document, new EnrichMetadata(document.Metadata.Title, document.Metadata.Header),
                     cancellationToken);
+                break; // TODO: to import only one document
             }
             
             memories.AddRange(documents);
+            break; // TODO: to import only one document
         }
 
         // Write memories and documents to file

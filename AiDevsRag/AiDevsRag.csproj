@@ -25,7 +25,6 @@
 
     <ItemGroup>
       <Folder Include="Memories\" />
-      <Folder Include="OpenAI\Common\" />
     </ItemGroup>
 
     <ItemGroup>

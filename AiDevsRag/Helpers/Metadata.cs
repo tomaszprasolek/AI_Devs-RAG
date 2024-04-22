@@ -9,6 +9,5 @@ public class Metadata
     public string Source { get; set; }
     public int Tokens { get; set; }
     public string Content { get; set; }
-    
     public string[] Tags { get; set; }
 }
