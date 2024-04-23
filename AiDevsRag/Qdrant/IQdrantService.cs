@@ -5,15 +5,13 @@ namespace AiDevsRag.Qdrant;
 
 public interface IQdrantService
 {
-    Task CreateCollectionAsync(string collectionName);
-    Task<bool> CheckIfCollectionExistsAsync(string collectionName);
-    Task<QdrantCollectionResponse?> GetCollectionInfoAsync(string collectionName);
+    Task CreateCollectionAsync();
+    Task<bool> CheckIfCollectionExistsAsync();
+    Task<QdrantCollectionResponse?> GetCollectionInfoAsync();
 
-    Task UpsertPointsAsync(string collectionName,
-        QdrantPoints points,
+    Task UpsertPointsAsync(QdrantPoints points,
         CancellationToken cancellationToken);
 
-    Task<QdrantSearchResponse?> SearchAsync(string collectionName,
-        QdrantSearchRequest searchRequest,
+    Task<QdrantSearchResponse?> SearchAsync(QdrantSearchRequest searchRequest,
         CancellationToken cancellationToken);
 }

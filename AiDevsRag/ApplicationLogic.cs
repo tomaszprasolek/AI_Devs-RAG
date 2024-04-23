@@ -1,4 +1,5 @@
-﻿using AiDevsRag.Helpers;
+﻿using AiDevsRag.Config;
+using AiDevsRag.Helpers;
 using AiDevsRag.OpenAI;
 using AiDevsRag.OpenAI.Common;
 using AiDevsRag.OpenAI.Embeddings;
@@ -7,6 +8,7 @@ using AiDevsRag.OpenAI.Response;
 using AiDevsRag.Qdrant;
 using AiDevsRag.Qdrant.Embeddings;
 using AiDevsRag.Qdrant.Search;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -14,28 +16,40 @@ using Result = AiDevsRag.Qdrant.Search.Result;
 
 namespace AiDevsRag;
 
-public sealed class ApplicationLogic(
-    IQdrantService qdrantDatabase,
-    IOpenAiService openAiService)
+public sealed class ApplicationLogic
 {
+    private readonly IQdrantService _qdrantDatabase;
+    private readonly IOpenAiService _openAiService;
+    private readonly bool _importDocuments;
+    private readonly string _collectionName;
+
+    public ApplicationLogic(IQdrantService qdrantDatabase,
+        IOptions<QdrantConfig> qdrantConfig,
+        IOpenAiService openAiService)
+    {
+        _qdrantDatabase = qdrantDatabase;
+        _openAiService = openAiService;
+        
+        _importDocuments = qdrantConfig.Value.ImportDocuments;
+        _collectionName = qdrantConfig.Value.CollectionName;
+    }
+
     public async Task LoadMemoryAsync(CancellationToken cancellationToken)
     {
-        string collectionName = "ai_devs";
+        Console.WriteLine($"Check if collection '{_collectionName}' exists...");
 
-        Console.WriteLine($"Check if collection '{collectionName}' exists...");
-
-        if (!await qdrantDatabase.CheckIfCollectionExistsAsync(collectionName))
+        if (!await _qdrantDatabase.CheckIfCollectionExistsAsync())
         {
-            Console.WriteLine($"Collection {collectionName} not exist");
-            Console.WriteLine($"Creating collection: {collectionName}");
+            Console.WriteLine($"Collection {_collectionName} not exist");
+            Console.WriteLine($"Creating collection: {_collectionName}");
 
-            await qdrantDatabase.CreateCollectionAsync(collectionName);
+            await _qdrantDatabase.CreateCollectionAsync();
         }
 
-        Console.WriteLine($"Collection {collectionName} already exists");
+        Console.WriteLine($"Collection {_collectionName} already exists");
 
-        QdrantCollectionResponse? collection = await qdrantDatabase.GetCollectionInfoAsync(collectionName);
-        if (collection is null || collection.Result.PointsCount == 0)
+        QdrantCollectionResponse? collection = await _qdrantDatabase.GetCollectionInfoAsync();
+        if (collection is null || collection.Result.PointsCount == 0 || _importDocuments)
         {
             // Generate documents to be ready to load them to Qdrant
             Console.WriteLine("Start loading memories to Qdrant database...");
@@ -45,7 +59,7 @@ public sealed class ApplicationLogic(
             foreach (Document document in memories)
             {
                 var embeddings =
-                    await openAiService.GenerateEmbeddingsAsync(new EmbeddingRequest(document.PageContent), cancellationToken);
+                    await _openAiService.GenerateEmbeddingsAsync(new EmbeddingRequest(document.PageContent), cancellationToken);
 
                 if (embeddings is null)
                 {
@@ -69,7 +83,7 @@ public sealed class ApplicationLogic(
                 };
                     
                 // Insert to vector database
-                await qdrantDatabase.UpsertPointsAsync(collectionName, points, cancellationToken);
+                await _qdrantDatabase.UpsertPointsAsync(points, cancellationToken);
             }
             
         }
@@ -77,13 +91,13 @@ public sealed class ApplicationLogic(
 
     public async Task<QdrantSearchResponse> SearchAsync(string query, string collectionName, CancellationToken cancellationToken)
     {
-        Embedding? queryEmbedding = await openAiService.GenerateEmbeddingsAsync(new EmbeddingRequest(query), cancellationToken);
+        Embedding? queryEmbedding = await _openAiService.GenerateEmbeddingsAsync(new EmbeddingRequest(query), cancellationToken);
         if (queryEmbedding is null)
         {
             throw new Exception("Embedding is null");
         }
         
-        QdrantSearchResponse? result = await qdrantDatabase.SearchAsync(collectionName, new QdrantSearchRequest
+        QdrantSearchResponse? result = await _qdrantDatabase.SearchAsync(new QdrantSearchRequest
         {
             Vector = queryEmbedding.Data[0].Embedding
         }, cancellationToken);
@@ -110,7 +124,7 @@ public sealed class ApplicationLogic(
         gptPrompt.AddMessage(new GptMessage(GptMessageRole.system, Prompts.GetSystemPrompt(qdrantSearchResults)));
         gptPrompt.AddMessage(new GptMessage(GptMessageRole.user, question));
         
-        GptResponse response = await openAiService.ChatAsync(gptPrompt, cancellationToken);
+        GptResponse response = await _openAiService.ChatAsync(gptPrompt, cancellationToken);
         
         Console.WriteLine("Answer:");
         Console.WriteLine(response.Choices[0].Message.Content);
@@ -173,7 +187,7 @@ public sealed class ApplicationLogic(
         prompt.AddMessage(new GptMessage(GptMessageRole.system, systemPrompt));
         prompt.AddMessage(new GptMessage(GptMessageRole.user, document.PageContent));
 
-        GptResponse? gptResponse = await openAiService.ChatWithFunctionAsync(prompt, functionJson, cancellationToken);
+        GptResponse? gptResponse = await _openAiService.ChatWithFunctionAsync(prompt, functionJson, cancellationToken);
 
         return ParseFunctionCall(gptResponse);
     }

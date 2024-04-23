@@ -1,4 +1,5 @@
 ﻿using AiDevsRag;
+using AiDevsRag.Config;
 using AiDevsRag.OpenAI;
 using AiDevsRag.Qdrant;
 using AiDevsRag.Qdrant.Search;
@@ -13,14 +14,20 @@ var configuration = new ConfigurationBuilder()
 
 var services = new ServiceCollection();
 services.AddOptions<OpenAiConfig>().Bind(configuration.GetSection(OpenAiConfig.ConfigKey));
+services.AddOptions<QdrantConfig>().Bind(configuration.GetSection(QdrantConfig.ConfigKey));
 services.AddSingleton<IOpenAiService, OpenAiService>();
 services.AddSingleton<IQdrantService, QdrantService>();
 services.AddSingleton<ApplicationLogic>();
 
 var serviceProvider = services.BuildServiceProvider();
 
-string question = "In which lesson was about rerank?";
-Console.WriteLine($"Question: {question}");
+Console.WriteLine("Your question about AI_Devs course:");
+string? question = Console.ReadLine();
+if (question is null)
+{
+    Console.WriteLine("No question");
+    Environment.Exit(0);
+}
 
 Console.WriteLine("Starting the app...");
 
@@ -32,12 +39,6 @@ await app.LoadMemoryAsync(cancellationTokenSource.Token);
 QdrantSearchResponse searchResult = await app.SearchAsync(question, "ai_devs", cancellationTokenSource.Token);
 await app.AskLlmAsync(question, searchResult.Result, cancellationTokenSource.Token);
 
-
-public sealed class OpenAiConfig // TODO: move to separate file
-{
-    public const string ConfigKey = "OpenAi";
-    public string ApiKey { get; set; }
-}
 
 public sealed class EnrichMetadata
 {

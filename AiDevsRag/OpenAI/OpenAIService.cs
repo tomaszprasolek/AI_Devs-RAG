@@ -1,4 +1,5 @@
-﻿using AiDevsRag.OpenAI.Embeddings;
+﻿using AiDevsRag.Config;
+using AiDevsRag.OpenAI.Embeddings;
 using AiDevsRag.OpenAI.Request;
 using AiDevsRag.OpenAI.Response;
 using Microsoft.Extensions.Options;
