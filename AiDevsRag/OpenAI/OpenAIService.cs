@@ -1,4 +1,5 @@
 ﻿using AiDevsRag.Config;
+using AiDevsRag.Helpers;
 using AiDevsRag.OpenAI.Embeddings;
 using AiDevsRag.OpenAI.Request;
 using AiDevsRag.OpenAI.Response;
@@ -102,6 +103,7 @@ public sealed class OpenAiService : IOpenAiService
         var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/embeddings");
         request.Headers.Add("Authorization", $"Bearer {_apiKey}");
 
+        Console.WriteLine(ConsoleMessages.Request);
         string json = JsonSerializer.Serialize(embeddingRequest, JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         request.Content = content;
@@ -109,10 +111,10 @@ public sealed class OpenAiService : IOpenAiService
         var response = await client.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
+            Console.WriteLine(ConsoleMessages.Response);
             string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
             Console.WriteLine(responseContent);
-        }
-        response.EnsureSuccessStatusCode();
+        } response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<Embedding>(cancellationToken: cancellationToken);
     }

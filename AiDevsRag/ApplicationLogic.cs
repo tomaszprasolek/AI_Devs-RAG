@@ -244,7 +244,29 @@ public sealed class ApplicationLogic
         
         if (response.Choices[0].Message.tool_calls is null)
         {
-            json = response.Choices[0].Message.Content;
+            try
+            {
+                JsonDocument jsonDocument = JsonDocument.Parse(response.Choices[0].Message.Content);
+                json = JsonSerializer.Serialize(jsonDocument.RootElement);
+            }
+            catch
+            {
+                string[] tagsTemp = response.Choices[0].Message.Content
+                    .Split('\n')
+                    .Select(x => Regex.Replace(x
+                        .ToLower()
+                        .Replace("-", "")
+                        .Trim(), 
+                        "[-\\s]+", "_"))
+                    .ToArray();
+
+                var tagsContainer = new TagsContainer()
+                {
+                    Tags = tagsTemp
+                };
+                
+                json = JsonSerializer.Serialize(tagsContainer, OpenAiService.JsonOptions);
+            }
         }
         else
         {
