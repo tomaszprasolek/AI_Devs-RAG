@@ -19,7 +19,7 @@ services.AddSingleton<ApplicationLogic>();
 
 var serviceProvider = services.BuildServiceProvider();
 
-string question = "What is AI?";
+string question = "In which lesson was about rerank?";
 Console.WriteLine($"Question: {question}");
 
 Console.WriteLine("Starting the app...");

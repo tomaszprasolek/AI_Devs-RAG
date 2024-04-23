@@ -123,6 +123,8 @@ public sealed class ApplicationLogic(
 
         foreach (string filePath in Directory.EnumerateFiles(directoryPath, "*.md"))
         {
+            Console.WriteLine($"Processing file: {Path.GetFileNameWithoutExtension(filePath)}");
+            
             string content = await File.ReadAllTextAsync(filePath, cancellationToken);
             string title = Path.GetFileNameWithoutExtension(filePath);
 
@@ -138,11 +140,9 @@ public sealed class ApplicationLogic(
             {
                 document.Metadata.Tags = await GenerateTagsAsync(document, new EnrichMetadata(document.Metadata.Title, document.Metadata.Header),
                     cancellationToken);
-                break; // TODO: to import only one document
             }
             
             memories.AddRange(documents);
-            break; // TODO: to import only one document
         }
 
         // Write memories and documents to file
