@@ -1,6 +1,7 @@
 ﻿using AiDevsRag.Config;
 using AiDevsRag.OpenAI;
 using AiDevsRag.Qdrant.Embeddings;
+using AiDevsRag.Qdrant.Scroll;
 using AiDevsRag.Qdrant.Search;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
@@ -57,7 +58,7 @@ public sealed class QdrantService : IQdrantService
     }
     
     public async Task UpsertPointsAsync(QdrantPoints points, 
-        CancellationToken cancellationToken) // TODO: move collection name to appsettings
+        CancellationToken cancellationToken)
     {
         var client = new HttpClient();
         var request = new HttpRequestMessage(HttpMethod.Put, $"{_qdrantUrl}/{_collectionName}/points");
@@ -94,6 +95,47 @@ public sealed class QdrantService : IQdrantService
         response.EnsureSuccessStatusCode();
     
         return await response.Content.ReadFromJsonAsync<QdrantSearchResponse>(cancellationToken);
+    }
+
+    public async Task<bool> CheckIfDocumentExistAsync(string documentName,
+        CancellationToken cancellationToken)
+    {
+        var client = new HttpClient();
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{_qdrantUrl}/{_collectionName}/points/scroll");
+
+        string json = """
+                      {
+                          "filter": {
+                              "must": [
+                                  {
+                                      "key": "DocumentName",
+                                      "match": {
+                                          "value": "##DocumentName##"
+                                      }
+                                  }
+                              ]
+                          },
+                          "limit": 1
+                      }
+                      """;
+        json = json.Replace("##DocumentName##", documentName);
+        
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        request.Content = content;
+    
+        var response = await client.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            Console.WriteLine(responseContent);
+        }
+        response.EnsureSuccessStatusCode();
+    
+        ScrollResponse? result = await response.Content.ReadFromJsonAsync<ScrollResponse>(cancellationToken);
+        if (result is null)
+            return false;
+        
+        return result.result.points.Count != 0;
     }
 
 }

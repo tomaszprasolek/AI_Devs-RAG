@@ -14,4 +14,7 @@ public interface IQdrantService
 
     Task<QdrantSearchResponse?> SearchAsync(QdrantSearchRequest searchRequest,
         CancellationToken cancellationToken);
+
+    Task<bool> CheckIfDocumentExistAsync(string documentName,
+        CancellationToken cancellationToken);
 }

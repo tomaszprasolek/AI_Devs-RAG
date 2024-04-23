@@ -13,6 +13,9 @@ public sealed class Payload
 {
     [JsonPropertyName("text")]
     public string Text { get; set; }
+    
+    [JsonPropertyName("DocumentName")]
+    public string DocumentName { get; set; }
 }
 
 public sealed class Point

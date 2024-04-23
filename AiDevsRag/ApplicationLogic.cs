@@ -36,6 +36,66 @@ public sealed class ApplicationLogic
 
     public async Task LoadMemoryAsync(CancellationToken cancellationToken)
     {
+        await CreateQdrantCollectionIfNotExist();
+
+        QdrantCollectionResponse? collection = await _qdrantDatabase.GetCollectionInfoAsync();
+        if (collection is null || collection.Result.PointsCount == 0 || _importDocuments)
+        {
+            // Generate documents to be ready to load them to Qdrant
+            Console.WriteLine("Start loading memories to Qdrant database...");
+            
+            string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "Memories");
+
+            foreach (string filePath in Directory.EnumerateFiles(directoryPath, "*.md"))
+            {
+                // Check if file is already imported
+                bool docExists =
+                    await _qdrantDatabase.CheckIfDocumentExistAsync(Path.GetFileNameWithoutExtension(filePath),
+                        cancellationToken);
+                if (docExists)
+                    continue;
+                
+                List<Document> fileMemories = await LoadMemoriesFromFileAsync(filePath, cancellationToken);
+
+                // Load document to vector database
+                foreach (Document document in fileMemories)
+                {
+                    var embeddings =
+                        await _openAiService.GenerateEmbeddingsAsync(new EmbeddingRequest(document.PageContent),
+                            cancellationToken);
+
+                    if (embeddings is null)
+                    {
+                        continue;
+                    }
+
+                    QdrantPoints points = new QdrantPoints
+                    {
+                        Points =
+                        [
+                            new Point
+                            {
+                                Id = document.Metadata.Id,
+                                Payload = new Qdrant.Embeddings.Payload
+                                {
+                                    DocumentName = document.Metadata.Title,
+                                    Text = JsonSerializer.Serialize(document.Metadata)
+                                },
+                                Vector = embeddings.Data[0].Embedding
+                            }
+                        ]
+                    };
+
+                    // Insert to vector database
+                    await _qdrantDatabase.UpsertPointsAsync(points, cancellationToken);
+                }
+            }
+
+        }
+    }
+
+    private async Task CreateQdrantCollectionIfNotExist()
+    {
         Console.WriteLine($"Check if collection '{_collectionName}' exists...");
 
         if (!await _qdrantDatabase.CheckIfCollectionExistsAsync())
@@ -47,46 +107,6 @@ public sealed class ApplicationLogic
         }
 
         Console.WriteLine($"Collection {_collectionName} already exists");
-
-        QdrantCollectionResponse? collection = await _qdrantDatabase.GetCollectionInfoAsync();
-        if (collection is null || collection.Result.PointsCount == 0 || _importDocuments)
-        {
-            // Generate documents to be ready to load them to Qdrant
-            Console.WriteLine("Start loading memories to Qdrant database...");
-            List<Document> memories = await LoadMemoriesAsync(cancellationToken);
-            
-            // Load document to vector database
-            foreach (Document document in memories)
-            {
-                var embeddings =
-                    await _openAiService.GenerateEmbeddingsAsync(new EmbeddingRequest(document.PageContent), cancellationToken);
-
-                if (embeddings is null)
-                {
-                    continue;
-                }
-
-                QdrantPoints points = new QdrantPoints
-                {
-                    Points =
-                    [
-                        new Point
-                        {
-                            Id = document.Metadata.Id,
-                            Payload = new Qdrant.Embeddings.Payload
-                            {
-                                Text = JsonSerializer.Serialize(document.Metadata)
-                            },
-                            Vector = embeddings.Data[0].Embedding
-                        }
-                    ]
-                };
-                    
-                // Insert to vector database
-                await _qdrantDatabase.UpsertPointsAsync(points, cancellationToken);
-            }
-            
-        }
     }
 
     public async Task<QdrantSearchResponse> SearchAsync(string query, string collectionName, CancellationToken cancellationToken)
@@ -164,6 +184,32 @@ public sealed class ApplicationLogic
         await File.WriteAllTextAsync(memoriesFilePath, JsonSerializer.Serialize(memories, OpenAiService.JsonOptions), cancellationToken);
         
         return memories;
+    }
+
+    private async Task<List<Document>> LoadMemoriesFromFileAsync(string filePath,
+        CancellationToken cancellationToken)
+    {
+        Console.WriteLine($"Processing file: {Path.GetFileNameWithoutExtension(filePath)}");
+
+        string content = await File.ReadAllTextAsync(filePath, cancellationToken);
+        string title = Path.GetFileNameWithoutExtension(filePath);
+
+        List<Document> documents = DocumentsHelpers.Split(content, new SplitMetadata
+        {
+            Title = title,
+            Size = 2500,
+            Estimate = true,
+            Url = "https://bravecourses.circle.so/c/lekcje-programu-ai2r-fc066c/"
+        });
+
+        foreach (Document document in documents)
+        {
+            document.Metadata.Tags = await GenerateTagsAsync(document,
+                new EnrichMetadata(document.Metadata.Title, document.Metadata.Header),
+                cancellationToken);
+        }
+
+        return documents;
     }
 
     private async Task<string[]> GenerateTagsAsync(Document document,
