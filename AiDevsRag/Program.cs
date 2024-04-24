@@ -21,23 +21,34 @@ services.AddSingleton<ApplicationLogic>();
 
 var serviceProvider = services.BuildServiceProvider();
 
-Console.WriteLine("Your question about AI_Devs course:");
-string? question = Console.ReadLine();
-if (question is null)
+// -------------
+// START APP
+// -------------
+Console.WriteLine("Starting the app...");
+CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+var app = serviceProvider.GetRequiredService<ApplicationLogic>();
+await app.LoadMemoryAsync(cancellationTokenSource.Token);
+
+
+while (true)
 {
-    Console.WriteLine("No question");
-    Environment.Exit(0);
+    // User question
+    Console.WriteLine("Your question about AI_Devs course:");
+    string? question = Console.ReadLine();
+    if (question is null || 
+        question.Equals("exit", StringComparison.CurrentCultureIgnoreCase) || 
+        question.Equals("quit", StringComparison.CurrentCultureIgnoreCase))
+    {
+        Console.WriteLine("No question");
+        Environment.Exit(0);
+    }
+    
+    // Search the answer
+    QdrantSearchResponse searchResult = await app.SearchAsync(question, "ai_devs", cancellationTokenSource.Token);
+    await app.AskLlmAsync(question, searchResult.Result, cancellationTokenSource.Token);
 }
 
-Console.WriteLine("Starting the app...");
 
-CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
-var app = serviceProvider.GetRequiredService<ApplicationLogic>();
-
-await app.LoadMemoryAsync(cancellationTokenSource.Token);
-QdrantSearchResponse searchResult = await app.SearchAsync(question, "ai_devs", cancellationTokenSource.Token);
-await app.AskLlmAsync(question, searchResult.Result, cancellationTokenSource.Token);
 
 
 public sealed class EnrichMetadata

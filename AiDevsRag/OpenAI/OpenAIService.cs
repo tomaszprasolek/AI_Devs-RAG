@@ -103,8 +103,10 @@ public sealed class OpenAiService : IOpenAiService
         var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/embeddings");
         request.Headers.Add("Authorization", $"Bearer {_apiKey}");
 
-        Console.WriteLine(ConsoleMessages.Request);
+        
         string json = JsonSerializer.Serialize(embeddingRequest, JsonOptions);
+        Console.WriteLine(ConsoleMessages.Request);
+        Console.WriteLine(json);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         request.Content = content;
     

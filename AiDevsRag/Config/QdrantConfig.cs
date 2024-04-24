@@ -7,4 +7,5 @@ public sealed class QdrantConfig // TODO: move it to Qdrant folder ???
     public string? BaseUrl { get; set; }
     public string? CollectionName { get; set; }
     public bool ImportDocuments { get; set; } = false;
+    public bool GenerateTags { get; set; } = false;
 }

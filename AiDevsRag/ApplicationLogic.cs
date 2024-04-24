@@ -20,8 +20,10 @@ public sealed class ApplicationLogic
 {
     private readonly IQdrantService _qdrantDatabase;
     private readonly IOpenAiService _openAiService;
+    
     private readonly bool _importDocuments;
     private readonly string _collectionName;
+    private readonly bool _generateTags;
 
     public ApplicationLogic(IQdrantService qdrantDatabase,
         IOptions<QdrantConfig> qdrantConfig,
@@ -32,6 +34,7 @@ public sealed class ApplicationLogic
         
         _importDocuments = qdrantConfig.Value.ImportDocuments;
         _collectionName = qdrantConfig.Value.CollectionName;
+        _generateTags = qdrantConfig.Value.GenerateTags;
     }
 
     public async Task LoadMemoryAsync(CancellationToken cancellationToken)
@@ -150,42 +153,6 @@ public sealed class ApplicationLogic
         Console.WriteLine(response.Choices[0].Message.Content);
     }
 
-    private async Task<List<Document>> LoadMemoriesAsync(CancellationToken cancellationToken)
-    {
-        List<Document> memories = new List<Document>(100);
-        string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "Memories");
-
-        foreach (string filePath in Directory.EnumerateFiles(directoryPath, "*.md"))
-        {
-            Console.WriteLine($"Processing file: {Path.GetFileNameWithoutExtension(filePath)}");
-            
-            string content = await File.ReadAllTextAsync(filePath, cancellationToken);
-            string title = Path.GetFileNameWithoutExtension(filePath);
-
-            List<Document> documents = DocumentsHelpers.Split(content, new SplitMetadata
-            {
-                Title = title,
-                Size = 2500,
-                Estimate = true,
-                Url = "https://bravecourses.circle.so/c/lekcje-programu-ai2r-fc066c/"
-            });
-
-            foreach (Document document in documents)
-            {
-                document.Metadata.Tags = await GenerateTagsAsync(document, new EnrichMetadata(document.Metadata.Title, document.Metadata.Header),
-                    cancellationToken);
-            }
-            
-            memories.AddRange(documents);
-        }
-
-        // Write memories and documents to file
-        string memoriesFilePath = Path.Combine(Directory.GetCurrentDirectory(), "Memories", "memories.json");
-        await File.WriteAllTextAsync(memoriesFilePath, JsonSerializer.Serialize(memories, OpenAiService.JsonOptions), cancellationToken);
-        
-        return memories;
-    }
-
     private async Task<List<Document>> LoadMemoriesFromFileAsync(string filePath,
         CancellationToken cancellationToken)
     {
@@ -202,11 +169,15 @@ public sealed class ApplicationLogic
             Url = "https://bravecourses.circle.so/c/lekcje-programu-ai2r-fc066c/"
         });
 
-        foreach (Document document in documents)
+
+        if (_generateTags)
         {
-            document.Metadata.Tags = await GenerateTagsAsync(document,
-                new EnrichMetadata(document.Metadata.Title, document.Metadata.Header),
-                cancellationToken);
+            foreach (Document document in documents)
+            {
+                document.Metadata.Tags = await GenerateTagsAsync(document,
+                    new EnrichMetadata(document.Metadata.Title, document.Metadata.Header),
+                    cancellationToken);
+            }
         }
 
         return documents;
