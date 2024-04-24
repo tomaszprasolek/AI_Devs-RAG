@@ -8,6 +8,7 @@ using AiDevsRag.OpenAI.Response;
 using AiDevsRag.Qdrant;
 using AiDevsRag.Qdrant.Embeddings;
 using AiDevsRag.Qdrant.Search;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -20,18 +21,22 @@ public sealed class ApplicationLogic
 {
     private readonly IQdrantService _qdrantDatabase;
     private readonly IOpenAiService _openAiService;
-    
+    private readonly ILogger<QdrantConfig> _logger;
+
     private readonly bool _importDocuments;
     private readonly string _collectionName;
     private readonly bool _generateTags;
 
     public ApplicationLogic(IQdrantService qdrantDatabase,
         IOptions<QdrantConfig> qdrantConfig,
-        IOpenAiService openAiService)
+        IOpenAiService openAiService,
+        ILogger<QdrantConfig> logger)
+
     {
         _qdrantDatabase = qdrantDatabase;
         _openAiService = openAiService;
-        
+        _logger = logger;
+
         _importDocuments = qdrantConfig.Value.ImportDocuments;
         _collectionName = qdrantConfig.Value.CollectionName;
         _generateTags = qdrantConfig.Value.GenerateTags;
@@ -39,13 +44,13 @@ public sealed class ApplicationLogic
 
     public async Task LoadMemoryAsync(CancellationToken cancellationToken)
     {
-        await CreateQdrantCollectionIfNotExist();
+        await CreateQdrantCollectionIfNotExist(cancellationToken);
 
-        QdrantCollectionResponse? collection = await _qdrantDatabase.GetCollectionInfoAsync();
+        QdrantCollectionResponse? collection = await _qdrantDatabase.GetCollectionInfoAsync(cancellationToken);
         if (collection is null || collection.Result.PointsCount == 0 || _importDocuments)
         {
             // Generate documents to be ready to load them to Qdrant
-            Console.WriteLine("Start loading memories to Qdrant database...");
+            _logger.LogInformation("Start loading memories to Qdrant database...");
             
             string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "Memories");
 
@@ -97,22 +102,22 @@ public sealed class ApplicationLogic
         }
     }
 
-    private async Task CreateQdrantCollectionIfNotExist()
+    private async Task CreateQdrantCollectionIfNotExist(CancellationToken cancellationToken)
     {
-        Console.WriteLine($"Check if collection '{_collectionName}' exists...");
+        _logger.LogInformation("Check if collection '{CollectionName}' exists...", _collectionName);
 
-        if (!await _qdrantDatabase.CheckIfCollectionExistsAsync())
+        if (!await _qdrantDatabase.CheckIfCollectionExistsAsync(cancellationToken))
         {
-            Console.WriteLine($"Collection {_collectionName} not exist");
-            Console.WriteLine($"Creating collection: {_collectionName}");
+            _logger.LogInformation("Collection {CollectionName} not exist", _collectionName);
+            _logger.LogInformation("Creating collection: {CollectionName}", _collectionName);
 
-            await _qdrantDatabase.CreateCollectionAsync();
+            await _qdrantDatabase.CreateCollectionAsync(cancellationToken);
         }
 
-        Console.WriteLine($"Collection {_collectionName} already exists");
+        _logger.LogInformation("Collection {CollectionName} already exists", _collectionName);
     }
 
-    public async Task<QdrantSearchResponse> SearchAsync(string query, string collectionName, CancellationToken cancellationToken)
+    public async Task<QdrantSearchResponse> SearchAsync(string query, CancellationToken cancellationToken)
     {
         Embedding? queryEmbedding = await _openAiService.GenerateEmbeddingsAsync(new EmbeddingRequest(query), cancellationToken);
         if (queryEmbedding is null)
@@ -129,10 +134,6 @@ public sealed class ApplicationLogic
         {
             throw new Exception("Qdrant search result is null");
         }
-        //
-        // Console.WriteLine("Search result:");
-        // Console.WriteLine(result);
-
         return result;
     }
 
@@ -156,7 +157,7 @@ public sealed class ApplicationLogic
     private async Task<List<Document>> LoadMemoriesFromFileAsync(string filePath,
         CancellationToken cancellationToken)
     {
-        Console.WriteLine($"Processing file: {Path.GetFileNameWithoutExtension(filePath)}");
+        _logger.LogInformation($"Processing file: {Path.GetFileNameWithoutExtension(filePath)}");
 
         string content = await File.ReadAllTextAsync(filePath, cancellationToken);
         string title = Path.GetFileNameWithoutExtension(filePath);
@@ -260,6 +261,6 @@ public sealed class ApplicationLogic
     private sealed class TagsContainer
     {
         [JsonPropertyName("tags")]
-        public string[] Tags { get; set; }
+        public string[] Tags { get; set; } = [];
     }
 }

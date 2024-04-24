@@ -5,9 +5,9 @@ namespace AiDevsRag.Qdrant;
 
 public interface IQdrantService
 {
-    Task CreateCollectionAsync();
-    Task<bool> CheckIfCollectionExistsAsync();
-    Task<QdrantCollectionResponse?> GetCollectionInfoAsync();
+    Task CreateCollectionAsync(CancellationToken cancellationToken);
+    Task<bool> CheckIfCollectionExistsAsync(CancellationToken cancellationToken);
+    Task<QdrantCollectionResponse?> GetCollectionInfoAsync(CancellationToken cancellationToken);
 
     Task UpsertPointsAsync(QdrantPoints points,
         CancellationToken cancellationToken);
