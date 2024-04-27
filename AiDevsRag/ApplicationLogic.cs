@@ -163,15 +163,9 @@ public sealed class ApplicationLogic
         string content = await File.ReadAllTextAsync(filePath, cancellationToken);
         string title = Path.GetFileNameWithoutExtension(filePath);
 
-        List<Document> documents = DocumentsHelpers.Split(content, new SplitMetadata
-        {
-            Title = title,
-            Size = 2500,
-            Estimate = true,
-            Url = "https://bravecourses.circle.so/c/lekcje-programu-ai2r-fc066c/"
-        });
-
-
+        List<Document> documents = DocumentsHelpers.Split(content,
+            new SplitMetadata(title, 2500, true, "https://bravecourses.circle.so/c/lekcje-programu-ai2r-fc066c/"));
+        
         if (_generateTags)
         {
             foreach (Document document in documents)
@@ -214,7 +208,7 @@ public sealed class ApplicationLogic
     {
         string json;
         
-        if (response.Choices[0].Message.tool_calls is null)
+        if (response.Choices[0].Message.ToolCalls is null)
         {
             try
             {
@@ -242,7 +236,7 @@ public sealed class ApplicationLogic
         }
         else
         {
-            json = response.Choices[0].Message.tool_calls[0].function!.arguments;
+            json = response.Choices[0].Message.ToolCalls[0].Function!.Arguments;
         }
 
         // Deserialize the JSON string into an instance of TagsContainer

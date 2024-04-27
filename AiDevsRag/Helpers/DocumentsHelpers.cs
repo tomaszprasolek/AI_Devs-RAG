@@ -6,7 +6,7 @@ namespace AiDevsRag.Helpers;
 
 public class DocumentsHelpers
 {
-    public static List<Document> Split(string text, ISplitMetadata config)
+    public static List<Document> Split(string text, SplitMetadata config)
     {
         List<Document> documents = new List<Document>();
         string document = "";
@@ -20,8 +20,8 @@ public class DocumentsHelpers
             if (string.IsNullOrWhiteSpace(chunk))
                 continue;
 
-            string header = Regex.Match(chunk, @"^\#.*$", RegexOptions.Multiline)?.Value ?? "n/a";
-            topic = Regex.Match(chunk, @"^## [^#].*$", RegexOptions.Multiline)?.Value ?? topic;
+            string header = Regex.Match(chunk, @"^\#.*$", RegexOptions.Multiline).Value ?? "n/a"; // TODO: check this
+            topic = Regex.Match(chunk, @"^## [^#].*$", RegexOptions.Multiline).Value ?? topic; // TODO: check this
             string uuid = Guid.NewGuid().ToString();
 
             int chunkTokens = config.Estimate
@@ -42,21 +42,17 @@ public class DocumentsHelpers
                         : sentence.Length;
                     if (tokenCount + sentenceTokens > config.Size)
                     {
-                        documents.Add(new Document
+                        documents.Add(new Document(pageContent: subChunk, new Metadata
                         {
-                            PageContent = subChunk,
-                            Metadata = new Metadata
-                            {
-                                Id = uuid,
-                                Header = header,
-                                Title = config.Title,
-                                Context = config.Context ?? topic,
-                                Source =
-                                    $"{config.Url ?? ""}{config.Title.ToLower().Replace(" — ", "-").Replace(" ", "-")}",
-                                Tokens = tokenCount,
-                                Content = subChunk
-                            }
-                        });
+                            Id = uuid,
+                            Header = header,
+                            Title = config.Title,
+                            Context = config.Context ?? topic,
+                            Source =
+                                $"{config.Url ?? ""}{config.Title.ToLower().Replace(" — ", "-").Replace(" ", "-")}",
+                            Tokens = tokenCount,
+                            Content = subChunk
+                        }));
                         subChunk = "";
                     }
 
@@ -70,20 +66,16 @@ public class DocumentsHelpers
                 if (chunkTokens <= 50)
                     continue;
 
-                documents.Add(new Document
+                documents.Add(new Document(pageContent: chunk.Trim(), new Metadata
                 {
-                    PageContent = chunk.Trim(),
-                    Metadata = new Metadata
-                    {
-                        Id = uuid,
-                        Header = header,
-                        Title = config.Title,
-                        Context = config.Context ?? topic,
-                        Source = $"{config.Url ?? ""}{config.Title.ToLower().Replace(" — ", "-").Replace(" ", "-")}",
-                        Tokens = chunkTokens,
-                        Content = chunk.Trim()
-                    }
-                });
+                    Id = uuid,
+                    Header = header,
+                    Title = config.Title,
+                    Context = config.Context ?? topic,
+                    Source = $"{config.Url ?? ""}{config.Title.ToLower().Replace(" — ", "-").Replace(" ", "-")}",
+                    Tokens = chunkTokens,
+                    Content = chunk.Trim()
+                }));
             }
         }
 

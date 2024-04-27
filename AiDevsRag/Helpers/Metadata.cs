@@ -2,12 +2,12 @@
 
 public class Metadata
 {
-    public string Id { get; set; }
-    public string Header { get; set; }
-    public string Title { get; set; }
-    public string Context { get; set; }
-    public string Source { get; set; }
+    public string Id { get; set; } = string.Empty;
+    public string Header { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Context { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
     public int Tokens { get; set; }
-    public string Content { get; set; }
-    public string[] Tags { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public string[] Tags { get; set; } = [];
 }

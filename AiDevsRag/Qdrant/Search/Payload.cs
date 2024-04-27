@@ -8,7 +8,7 @@ namespace AiDevsRag.Qdrant.Search;
 public sealed class Payload
 {
     [JsonPropertyName("text")]
-    public string Text { get; set; }
+    public string Text { get; set; } = string.Empty;
 
     public Metadata? GetMetadata()
     {

@@ -1,7 +1,9 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
 
 namespace AiDevsRag.Helpers;
 
+[SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 public sealed class Message
 {
     [JsonConstructor]
@@ -20,28 +22,30 @@ public sealed class Message
     
     [JsonPropertyName("name")]
     public string? Name { get; set; }
-    
+
     [JsonPropertyName("tool_calls")]
-    public List<ToolCall>? tool_calls { get; set; }
+    // ReSharper disable once CollectionNeverUpdated.Global
+    public List<ToolCall>? ToolCalls { get; set; } = [];
 }
+
 
 public sealed class ToolCall
 {
     [JsonPropertyName("id")]
-    public string id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     [JsonPropertyName("type")]
-    public string type { get; set; }
+    public string Type { get; set; } = string.Empty;
 
     [JsonPropertyName("function")]
-    public Function? function { get; set; }
+    public Function? Function { get; set; } = new();
 }
 
 public sealed class Function
 {
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     
     [JsonPropertyName("arguments")]
-    public string arguments { get; set; }
+    public string Arguments { get; set; } = string.Empty;
 }

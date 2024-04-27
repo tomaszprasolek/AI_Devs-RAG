@@ -1,9 +1,12 @@
-﻿namespace AiDevsRag.OpenAI.Embeddings;
+﻿using System.Diagnostics.CodeAnalysis;
 
-public class Embedding
+namespace AiDevsRag.OpenAI.Embeddings;
+
+[SuppressMessage("ReSharper", "CollectionNeverUpdated.Global")]
+public sealed class Embedding
 {
-    public string Object { get; set; }
-    public List<Datum> Data { get; set; }
-    public string Model { get; set; }
-    public Usage Usage { get; set; }
+    public string Object { get; set; } = string.Empty;
+    public List<Datum> Data { get; set; } = [];
+    public string Model { get; set; } = string.Empty;
+    public Usage Usage { get; set; } = new();
 }

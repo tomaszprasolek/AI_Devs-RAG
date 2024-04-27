@@ -8,9 +8,9 @@ public sealed class Point
 {
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
-    
+
     [JsonPropertyName("vector")]
-    public List<double> Vector { get; set; }
+    public List<double> Vector { get; set; } = [];
     
     [JsonPropertyName("payload")]
     public Payload Payload { get; set; } = new();

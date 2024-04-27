@@ -1,16 +1,17 @@
-﻿namespace AiDevsRag.Qdrant.Scroll;
+﻿using System.Text.Json.Serialization;
+// ReSharper disable CollectionNeverUpdated.Global
 
-// Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
-public class Result
-{
-    public List<object> points { get; set; }
-    public object next_page_offset { get; set; }
-}
+namespace AiDevsRag.Qdrant.Scroll;
 
 public class ScrollResponse
 {
-    public Result result { get; set; }
-    public string status { get; set; }
-    public double time { get; set; }
+    [JsonPropertyName("result")]
+    public Result Result { get; set; } = new();
+    
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+    
+    [JsonPropertyName("time")]
+    public double Time { get; set; }
 }
 

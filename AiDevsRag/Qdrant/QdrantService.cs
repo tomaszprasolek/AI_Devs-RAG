@@ -158,7 +158,7 @@ public sealed class QdrantService : IQdrantService
         if (result is null)
             return false;
         
-        return result.result.points.Count != 0;
+        return result.Result.Points.Count != 0;
     }
 
 }
