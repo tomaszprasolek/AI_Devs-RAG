@@ -127,6 +127,7 @@ public sealed class ApplicationLogic
         
         QdrantSearchResponse? result = await _qdrantDatabase.SearchAsync(new QdrantSearchRequest
         {
+            Limit = 5,
             Vector = queryEmbedding.Data[0].Embedding
         }, cancellationToken);
 
@@ -175,9 +176,7 @@ public sealed class ApplicationLogic
         {
             foreach (Document document in documents)
             {
-                document.Metadata.Tags = await GenerateTagsAsync(document,
-                    new EnrichMetadata(document.Metadata.Title, document.Metadata.Header),
-                    cancellationToken);
+                document.Metadata.Tags = await GenerateTagsAsync(document, cancellationToken);
             }
         }
 
@@ -185,7 +184,6 @@ public sealed class ApplicationLogic
     }
 
     private async Task<string[]> GenerateTagsAsync(Document document,
-        EnrichMetadata config,
         CancellationToken cancellationToken)
     {
         string functionJson =
@@ -195,13 +193,15 @@ public sealed class ApplicationLogic
         var prompt = new GptPrompt("gpt-4-0613")
         {
             Temperature = 0
-            //MaxConcurrency = 5
         };
+        
+        string title = document.Metadata.Title;
+        string header = document.Metadata.Header;
 
         string systemPrompt = "Generate tags for the following document.\n\r" +
                               "Additional info: \n\r" +
-                              $"- Document title: {config.Title}\n\r" +
-                              $"- Document context (may be helpful): {config.Header ?? "n/a"}\n\r";
+                              $"- Document title: {title}\n\r" +
+                              $"- Document context (may be helpful): {(!string.IsNullOrWhiteSpace(header) ? header : "n/a")}\n\r";
         prompt.AddMessage(new GptMessage(GptMessageRole.system, systemPrompt));
         prompt.AddMessage(new GptMessage(GptMessageRole.user, document.PageContent));
 

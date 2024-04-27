@@ -58,22 +58,3 @@ while (true)
     QdrantSearchResponse searchResult = await app.SearchAsync(question, cancellationTokenSource.Token);
     await app.AskLlmAsync(question, searchResult.Result, cancellationTokenSource.Token);
 }
-
-
-
-
-public sealed class EnrichMetadata
-{
-    public EnrichMetadata(string title,
-        string url)
-    {
-        Title = title;
-        Url = url;
-    }
-
-    public string Title { get; }
-    public string? Header { get; init; }
-    public string? Context { get; init; }
-    public string? Source { get; init; }
-    public string Url { get; }
-}
