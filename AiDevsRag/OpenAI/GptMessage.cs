@@ -16,7 +16,7 @@ public class GptMessage(
     public string Content { get; } = content;
 
     [JsonPropertyName("tool_calls")]
-    public List<ToolCall> ToolCalls { get; set; } = [];
+    public List<ToolCall>? ToolCalls { get; set; }
 }
 
 public sealed class ToolCall

@@ -7,13 +7,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-var configuration = new ConfigurationBuilder()
+IConfigurationRoot configuration = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("appsettings.json", optional: false)
     .AddUserSecrets<Program>()
     .Build();
 
-var services = new ServiceCollection();
+ServiceCollection services = new ServiceCollection();
 
 services.AddLogging(loggerBuilder =>
 {
@@ -22,10 +22,26 @@ services.AddLogging(loggerBuilder =>
     loggerBuilder.AddConsole();
 });
 
-services.AddOptions<OpenAiConfig>().Bind(configuration.GetSection(OpenAiConfig.ConfigKey));
 services.AddOptions<QdrantConfig>().Bind(configuration.GetSection(QdrantConfig.ConfigKey));
-services.AddSingleton<IOpenAiService, OpenAiService>();
-services.AddSingleton<IQdrantService, QdrantService>();
+
+// Register HTTP clients
+services.AddHttpClient<IQdrantService, QdrantService>(httpClient =>
+{
+    string? baseUrl = configuration.GetValue<string>($"{QdrantConfig.ConfigKey}:{nameof(QdrantConfig.BaseUrl)}");
+    httpClient.BaseAddress = new Uri(baseUrl!);
+});
+
+services.AddHttpClient<IOpenAiService, OpenAiService>(httpClient =>
+{
+    string configKey = "OpenAi";
+    string baseUrl = configuration.GetValue<string>($"{configKey}:BaseUrl")!;
+    string apiKey = configuration.GetValue<string>($"{configKey}:ApiKey")!;
+    
+    httpClient.BaseAddress = new Uri(baseUrl);
+    httpClient.DefaultRequestHeaders.Clear();
+    httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+});
+   
 services.AddSingleton<ApplicationLogic>();
 
 var serviceProvider = services.BuildServiceProvider();

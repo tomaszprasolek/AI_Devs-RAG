@@ -13,21 +13,23 @@ namespace AiDevsRag.Qdrant;
 
 public sealed class QdrantService : IQdrantService
 {
+    private readonly HttpClient _httpClient;
     private readonly ILogger<QdrantService> _logger;
-    private readonly string _qdrantUrl;
     private readonly string _collectionName;
 
-    public QdrantService(IOptions<QdrantConfig> config, ILogger<QdrantService> logger)
+    public QdrantService(
+        HttpClient httpClient,
+        IOptions<QdrantConfig> config, 
+        ILogger<QdrantService> logger)
     {
+        _httpClient = httpClient;
         _logger = logger;
-        _qdrantUrl = config.Value.BaseUrl;
         _collectionName = config.Value.CollectionName;
     }
     
     public async Task CreateCollectionAsync(CancellationToken cancellationToken)
     {
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Put, $"{_qdrantUrl}/{_collectionName}");
+        var request = new HttpRequestMessage(HttpMethod.Put, $"collections/{_collectionName}");
 
         string json = JsonSerializer.Serialize(new QdrantCollectionRequest(new Vectors()), new JsonSerializerOptions
         {
@@ -38,7 +40,7 @@ public sealed class QdrantService : IQdrantService
         
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         request.Content = content;
-        var response = await client.SendAsync(request, cancellationToken);
+        var response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -49,9 +51,8 @@ public sealed class QdrantService : IQdrantService
 
     public async Task<bool> CheckIfCollectionExistsAsync(CancellationToken cancellationToken)
     {
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, $"{_qdrantUrl}/{_collectionName}");
-        var response = await client.SendAsync(request, cancellationToken);
+        var request = new HttpRequestMessage(HttpMethod.Get, $"collections/{_collectionName}");
+        var response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -64,9 +65,8 @@ public sealed class QdrantService : IQdrantService
 
     public async Task<QdrantCollectionResponse?> GetCollectionInfoAsync(CancellationToken cancellationToken)
     {
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, $"{_qdrantUrl}/{_collectionName}");
-        var response = await client.SendAsync(request);
+        var request = new HttpRequestMessage(HttpMethod.Get, $"collections/{_collectionName}");
+        var response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -81,15 +81,14 @@ public sealed class QdrantService : IQdrantService
     public async Task UpsertPointsAsync(QdrantPoints points, 
         CancellationToken cancellationToken)
     {
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Put, $"{_qdrantUrl}/{_collectionName}/points");
+        var request = new HttpRequestMessage(HttpMethod.Put, $"collections/{_collectionName}/points");
 
         string json = JsonSerializer.Serialize(points, OpenAiService.JsonOptions); // TODO: move json options to separate class
         _logger.LogDebug("Request payload: {Payload}",json);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         request.Content = content;
     
-        var response = await client.SendAsync(request, cancellationToken);
+        var response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -101,15 +100,14 @@ public sealed class QdrantService : IQdrantService
     public async Task<QdrantSearchResponse?> SearchAsync(QdrantSearchRequest searchRequest,
         CancellationToken cancellationToken)
     {
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{_qdrantUrl}/{_collectionName}/points/search");
+        var request = new HttpRequestMessage(HttpMethod.Post, $"collections/{_collectionName}/points/search");
 
         string json = JsonSerializer.Serialize(searchRequest, OpenAiService.JsonOptions);
         _logger.LogDebug("Request payload: {Payload}",json);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         request.Content = content;
     
-        var response = await client.SendAsync(request, cancellationToken);
+        var response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -123,8 +121,7 @@ public sealed class QdrantService : IQdrantService
     public async Task<bool> CheckIfDocumentExistAsync(string documentName,
         CancellationToken cancellationToken)
     {
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{_qdrantUrl}/{_collectionName}/points/scroll");
+        var request = new HttpRequestMessage(HttpMethod.Post, $"collections/{_collectionName}/points/scroll");
 
         string json = """
                       {
@@ -146,7 +143,7 @@ public sealed class QdrantService : IQdrantService
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         request.Content = content;
     
-        var response = await client.SendAsync(request, cancellationToken);
+        var response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);

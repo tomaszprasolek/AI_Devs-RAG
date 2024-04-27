@@ -1,9 +1,7 @@
-﻿using AiDevsRag.Config;
-using AiDevsRag.OpenAI.Embeddings;
+﻿using AiDevsRag.OpenAI.Embeddings;
 using AiDevsRag.OpenAI.Request;
 using AiDevsRag.OpenAI.Response;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -14,6 +12,7 @@ namespace AiDevsRag.OpenAI;
 
 public sealed class OpenAiService : IOpenAiService
 {
+    private readonly HttpClient _httpClient;
     private readonly ILogger<OpenAiService> _logger;
 
     public static readonly JsonSerializerOptions JsonOptions = new()
@@ -24,33 +23,31 @@ public sealed class OpenAiService : IOpenAiService
         NumberHandling = JsonNumberHandling.AllowReadingFromString
     };
 
-    private readonly string _apiKey;
-
-    public OpenAiService(IOptions<OpenAiConfig> settings, ILogger<OpenAiService> logger)
+    public OpenAiService(
+        HttpClient httpClient,
+        ILogger<OpenAiService> logger)
     {
+        _httpClient = httpClient;
         _logger = logger;
-        _apiKey = settings.Value.ApiKey;
     }
 
     public async Task<GptResponse> ChatAsync(GptPrompt prompt,
         CancellationToken cancellationToken)
     {
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions");
-        request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+        var request = new HttpRequestMessage(HttpMethod.Post, "v1/chat/completions");
         
         string json = JsonSerializer.Serialize(prompt, JsonOptions);
         _logger.LogDebug("Request payload: {Payload}",json);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         request.Content = content;
 
-        HttpResponseMessage response = await client.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
             _logger.LogDebug(responseContent);
         }
+        response.EnsureSuccessStatusCode();
         return response.Content
             .ReadFromJsonAsync<GptResponse>(JsonOptions, cancellationToken).Result!;
     }
@@ -59,9 +56,7 @@ public sealed class OpenAiService : IOpenAiService
         string functionJson,
         CancellationToken cancellationToken)
     {
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions");
-        request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+        var request = new HttpRequestMessage(HttpMethod.Post, "v1/chat/completions");
         
         string json = JsonSerializer.Serialize(prompt, JsonOptions);
         // Parse the JSON string into a JsonNode
@@ -78,7 +73,7 @@ public sealed class OpenAiService : IOpenAiService
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         request.Content = content;
 
-        HttpResponseMessage response = await client.SendAsync(request, cancellationToken);
+        HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -93,9 +88,7 @@ public sealed class OpenAiService : IOpenAiService
     public async Task<Embedding?> GenerateEmbeddingsAsync(EmbeddingRequest embeddingRequest, 
         CancellationToken cancellationToken)
     {
-        using HttpClient client = new();
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/embeddings");
-        request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+        var request = new HttpRequestMessage(HttpMethod.Post, "v1/embeddings");
         
         string json = JsonSerializer.Serialize(embeddingRequest, JsonOptions);
         _logger.LogDebug("Request payload: {Payload}",json);
@@ -103,7 +96,7 @@ public sealed class OpenAiService : IOpenAiService
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         request.Content = content;
     
-        var response = await client.SendAsync(request, cancellationToken);
+        var response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
