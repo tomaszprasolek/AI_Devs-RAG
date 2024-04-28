@@ -2,7 +2,7 @@
 
 public enum GptMessageRole
 {
-    system,
+    system, // TODO: change to capital letter e.g. System
     user,
     assistant
 }

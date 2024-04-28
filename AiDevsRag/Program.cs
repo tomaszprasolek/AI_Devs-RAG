@@ -72,5 +72,8 @@ while (true)
     
     // Search the answer
     QdrantSearchResponse searchResult = await app.SearchAsync(question, cancellationTokenSource.Token);
-    await app.AskLlmAsync(question, searchResult.Result, cancellationTokenSource.Token);
+    // Re-rank
+    var reRankedResult = await app.RerankAsync(question, searchResult, cancellationTokenSource.Token);
+    // Final answer
+    await app.AskLlmAsync(question, reRankedResult, cancellationTokenSource.Token);
 }

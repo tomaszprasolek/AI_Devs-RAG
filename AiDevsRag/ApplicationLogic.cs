@@ -127,7 +127,7 @@ public sealed class ApplicationLogic
         
         QdrantSearchResponse? result = await _qdrantDatabase.SearchAsync(new QdrantSearchRequest
         {
-            Limit = 5,
+            Limit = 30,
             Vector = queryEmbedding.Data[0].Embedding
         }, cancellationToken);
 
@@ -136,6 +136,104 @@ public sealed class ApplicationLogic
             throw new Exception("Qdrant search result is null");
         }
         return result;
+    }
+
+    public async Task<List<Result>> RerankAsync(string query,
+        QdrantSearchResponse search,
+        CancellationToken cancellationToken)
+    {
+        string systemPrompt = """"
+                              Check if the following document is relevant to this user query: "##query##" and the lesson of the course (if its mentioned by the user) and may be helpful to answer the question / query.
+                              Return 0 if not relevant, 1 if relevant. 
+                              
+                              Warning:
+                              - You're forced to return 0 or 1 and forbidden to return anything else under any circumstances.
+                              - Pay attention to the keywords from the query, mentioned links etc.
+                              
+                              Additional info: 
+                              - Document title: ##title##
+                              - Document context (may be helpful): ##header##
+                              
+                              Document content: ## ##content## ##
+                              
+                              Query:
+                              """";
+
+
+        List<RerankCheck> rerankChecks = new List<RerankCheck>(search.Result.Count);
+
+        List<Result> documents = search
+            .Result
+            .OrderByDescending(x => x.Score)
+            .ToList();
+        
+        foreach (Result document in documents)
+        {
+            Metadata? metadata = document.Payload.GetMetadata(); // TODO: refactor this
+            if (metadata is null) continue;
+
+            systemPrompt = systemPrompt
+                .Replace("##query##", query)
+                .Replace("##title##", metadata.Title)
+                .Replace("##header##", string.IsNullOrWhiteSpace(metadata.Header) ? "n/a" : metadata.Header)
+                .Replace("##content##", metadata.Content);
+
+            string userMessage = $"{query}### Is relevant (0 or 1)";
+
+            GptPrompt prompt = new GptPrompt("gpt-3.5-turbo-16k")
+            {
+                Temperature = 0
+            };
+            prompt.AddMessage(new GptMessage(GptMessageRole.system, systemPrompt));
+            prompt.AddMessage(new GptMessage(GptMessageRole.user, userMessage));
+            var gptResponse = await _openAiService.ChatAsync(prompt, cancellationToken);
+            
+            rerankChecks.Add(new RerankCheck(metadata.Id, Convert.ToInt32(gptResponse.Choices[0].Message.Content)));
+        }
+
+        var results = new List<Result>();
+        
+        foreach (Result document in documents)
+        {
+            Metadata? metadata = document.Payload.GetMetadata();  // TODO: refactor this
+            if (metadata is null) continue;
+
+            string id = document.Payload.GetMetadata()!.Id;
+
+            bool isRelevant = rerankChecks.Any(x => x.DocumentId == id && x.Rank == 1);
+            if (isRelevant)
+                results.Add(document);
+        }
+
+        return FilterResults(results);
+    }
+
+    private static List<Result> FilterResults(List<Result> reranked)
+    {
+        var results = new List<Result>(reranked.Count);
+        int limit = 5500;
+        int current = 0;
+
+        foreach (Result rerank in reranked)
+        {
+            Metadata? metadata = rerank.Payload.GetMetadata();
+            if (metadata is null) continue;
+            
+            int tokens = metadata.Tokens;
+            if (current + tokens < limit)
+            {
+                current += tokens;
+                results.Add(rerank);
+            }
+        }
+
+        return results;
+    }
+
+    private sealed class RerankCheck(string documentId, int rank)
+    {
+        public string DocumentId { get; } = documentId;
+        public int Rank { get; } = rank;
     }
 
     public async Task AskLlmAsync(string question, 
