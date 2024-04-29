@@ -3,6 +3,7 @@ using AiDevsRag.Config;
 using AiDevsRag.OpenAI;
 using AiDevsRag.Qdrant;
 using AiDevsRag.Qdrant.Search;
+using AiDevsRag.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,7 @@ services.AddLogging(loggerBuilder =>
     loggerBuilder.AddConsole();
 });
 
+services.AddScoped<IReRankService, ReRankService>();
 services.AddOptions<QdrantConfig>().Bind(configuration.GetSection(QdrantConfig.ConfigKey));
 
 // Register HTTP clients
@@ -55,6 +57,7 @@ var logger = serviceProvider.GetService<ILogger<Program>>()!;
 logger.LogInformation("Starting the app...");
 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 var app = serviceProvider.GetRequiredService<ApplicationLogic>();
+var rerankService = serviceProvider.GetRequiredService<IReRankService>();
 
 await app.LoadMemoryAsync(cancellationTokenSource.Token);
 
@@ -77,7 +80,7 @@ while (true)
     // Search the answer
     QdrantSearchResponse searchResult = await app.SearchAsync(question, cancellationTokenSource.Token);
     // Re-rank
-    var reRankedResult = await app.RerankAsync(question, searchResult, cancellationTokenSource.Token);
+    var reRankedResult = await rerankService.RerankAsync(question, searchResult, cancellationTokenSource.Token);
     // Final answer
     await app.AskLlmAsync(question, reRankedResult, cancellationTokenSource.Token);
     
