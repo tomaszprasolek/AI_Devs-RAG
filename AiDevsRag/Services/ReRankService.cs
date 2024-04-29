@@ -7,7 +7,7 @@ namespace AiDevsRag.Services;
 
 public sealed class ReRankService : IReRankService
 {
-    private readonly OpenAiService _openAiService;
+    private readonly IOpenAiService _openAiService;
 
     private readonly string _systemPrompt = """"
                                             Check if the following document is relevant to this user query: "##query##" and the lesson of the course (if its mentioned by the user) and may be helpful to answer the question / query.
@@ -27,7 +27,7 @@ public sealed class ReRankService : IReRankService
                                             """";
 
     
-    public ReRankService(OpenAiService openAiService)
+    public ReRankService(IOpenAiService openAiService)
     {
         _openAiService = openAiService;
     }
