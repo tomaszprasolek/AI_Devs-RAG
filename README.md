@@ -1,6 +1,6 @@
 # AI_Devs-RAG
 
-Simple RAG implementation for [aidevs.pl](https://aidevs.pl) course.
+Simple RAG implementation for [aidevs.pl](https://aidevs.pl) course content.
 
 ## How to run
 
@@ -14,6 +14,7 @@ Simple RAG implementation for [aidevs.pl](https://aidevs.pl) course.
  - Run the app and ask questions.
  - Enjoy 😊
 
-
+**Course content is not included in the repository because it's not my property. 😊  
+It belongs to guys who prepare the course.**
 
 Some code is taken from this [repository](https://github.com/i-am-alice/2nd-devs/tree/main/chat) and converted to C# code.
