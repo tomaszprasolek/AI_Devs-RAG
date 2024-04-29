@@ -159,38 +159,24 @@ public sealed class ApplicationLogic
                               Query:
                               """";
 
-
-        List<RerankCheck> rerankChecks = new List<RerankCheck>(search.Result.Count);
-
+        
         List<Result> documents = search
             .Result
             .OrderByDescending(x => x.Score)
             .ToList();
+
+        List<Task<RerankCheck>> reRankTasks = new List<Task<RerankCheck>>(documents.Count);
         
         foreach (Result document in documents)
         {
             Metadata? metadata = document.Payload.GetMetadata(); // TODO: refactor this
             if (metadata is null) continue;
 
-            systemPrompt = systemPrompt
-                .Replace("##query##", query)
-                .Replace("##title##", metadata.Title)
-                .Replace("##header##", string.IsNullOrWhiteSpace(metadata.Header) ? "n/a" : metadata.Header)
-                .Replace("##content##", metadata.Content);
-
-            string userMessage = $"{query}### Is relevant (0 or 1)";
-
-            GptPrompt prompt = new GptPrompt("gpt-3.5-turbo-16k")
-            {
-                Temperature = 0
-            };
-            prompt.AddMessage(new GptMessage(GptMessageRole.system, systemPrompt));
-            prompt.AddMessage(new GptMessage(GptMessageRole.user, userMessage));
-            var gptResponse = await _openAiService.ChatAsync(prompt, cancellationToken);
-            
-            rerankChecks.Add(new RerankCheck(metadata.Id, Convert.ToInt32(gptResponse.Choices[0].Message.Content)));
+           reRankTasks.Add(RankDocumentAsync(metadata, query, systemPrompt, cancellationToken));
         }
 
+        List<RerankCheck> rerankChecks = (await Task.WhenAll(reRankTasks)).ToList();
+        
         var results = new List<Result>();
         
         foreach (Result document in documents)
@@ -206,6 +192,30 @@ public sealed class ApplicationLogic
         }
 
         return FilterResults(results);
+    }
+
+    private async Task<RerankCheck> RankDocumentAsync(Metadata metadata,
+        string query,
+        string systemPrompt,
+        CancellationToken cancellationToken)
+    {
+        systemPrompt = systemPrompt
+            .Replace("##query##", query)
+            .Replace("##title##", metadata.Title)
+            .Replace("##header##", string.IsNullOrWhiteSpace(metadata.Header) ? "n/a" : metadata.Header)
+            .Replace("##content##", metadata.Content);
+
+        string userMessage = $"{query}### Is relevant (0 or 1)";
+
+        GptPrompt prompt = new GptPrompt("gpt-3.5-turbo-16k")
+        {
+            Temperature = 0
+        };
+        prompt.AddMessage(new GptMessage(GptMessageRole.system, systemPrompt));
+        prompt.AddMessage(new GptMessage(GptMessageRole.user, userMessage));
+        var gptResponse = await _openAiService.ChatAsync(prompt, cancellationToken);
+
+        return new RerankCheck(metadata.Id, Convert.ToInt32(gptResponse.Choices[0].Message.Content));
     }
 
     private static List<Result> FilterResults(List<Result> reranked)

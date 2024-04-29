@@ -6,6 +6,7 @@ using AiDevsRag.Qdrant.Search;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 IConfigurationRoot configuration = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -69,6 +70,9 @@ while (true)
         logger.LogInformation("No question. Close the application.");
         Environment.Exit(0);
     }
+
+    var sw = new Stopwatch();
+    sw.Start();
     
     // Search the answer
     QdrantSearchResponse searchResult = await app.SearchAsync(question, cancellationTokenSource.Token);
@@ -76,4 +80,7 @@ while (true)
     var reRankedResult = await app.RerankAsync(question, searchResult, cancellationTokenSource.Token);
     // Final answer
     await app.AskLlmAsync(question, reRankedResult, cancellationTokenSource.Token);
+    
+    sw.Stop();
+    Console.WriteLine($"Answer generated in: {sw.ElapsedMilliseconds}ms");
 }
